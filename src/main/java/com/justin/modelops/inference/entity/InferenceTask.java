@@ -4,19 +4,25 @@ import com.justin.modelops.common.audit.BaseAuditEntity;
 import com.justin.modelops.inference.enums.InferenceTaskStatus;
 import com.justin.modelops.model.entity.AiModel;
 import com.justin.modelops.runtime.entity.RuntimeBackend;
+import com.justin.modelops.tag.entity.Tag;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * A single inference request and its execution outcome. In Phase 1 execution is
@@ -64,4 +70,20 @@ public class InferenceTask extends BaseAuditEntity {
 
     @Column(name = "finished_at")
     private Instant finishedAt;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "task_tags",
+            joinColumns = @JoinColumn(name = "task_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    @BatchSize(size = 50)
+    private Set<Tag> tags = new HashSet<>();
+
+    public void addTag(Tag tag) {
+        tags.add(tag);
+    }
+
+    public void removeTag(Tag tag) {
+        tags.remove(tag);
+    }
 }

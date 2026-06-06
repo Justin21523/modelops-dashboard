@@ -7,6 +7,7 @@ import com.justin.modelops.inference.adapter.RuntimeAdapterRegistry;
 import com.justin.modelops.inference.entity.InferenceTask;
 import com.justin.modelops.inference.event.InferenceTaskQueuedEvent;
 import com.justin.modelops.notification.TaskEventPublisher;
+import com.justin.modelops.notification.dto.TaskStatusMessage;
 import com.justin.modelops.runtime.enums.BackendType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +18,9 @@ import org.springframework.transaction.event.TransactionalEventListener;
 /**
  * Drives asynchronous execution of a queued inference task. Runs after the dispatching
  * transaction commits, selects the adapter for the task's backend, and persists each
- * state transition via {@link InferenceTaskService}, broadcasting every change.
+ * state transition via {@link InferenceTaskService}, broadcasting every change. The mark*
+ * methods return {@code null} when the task was canceled, in which case the corresponding
+ * step is skipped.
  */
 @Slf4j
 @Component
@@ -34,16 +37,32 @@ public class InferenceTaskExecutor {
         execute(event.taskId());
     }
 
+    /** Broadcasts a cancellation (or other ad-hoc status) once its transaction commits. */
+    @TransactionalEventListener
+    public void onStatusBroadcast(InferenceTaskService.TaskStatusBroadcast broadcast) {
+        eventPublisher.publish(broadcast.message());
+    }
+
     void execute(Long taskId) {
-        eventPublisher.publish(taskService.markRunning(taskId));
+        TaskStatusMessage running = taskService.markRunning(taskId);
+        if (running == null) {
+            return; // task was canceled before execution started
+        }
+        eventPublisher.publish(running);
         try {
             InferenceTask task = taskService.loadForExecution(taskId);
             RuntimeAdapter adapter = adapterRegistry.resolve(backendTypeOf(task));
             InferenceResult result = adapter.run(task);
-            eventPublisher.publish(taskService.markSucceeded(taskId, result));
+            publishIfPresent(taskService.markSucceeded(taskId, result));
         } catch (Exception ex) {
             log.warn("Inference task {} failed", taskId, ex);
-            eventPublisher.publish(taskService.markFailed(taskId, ex.getMessage()));
+            publishIfPresent(taskService.markFailed(taskId, ex.getMessage()));
+        }
+    }
+
+    private void publishIfPresent(TaskStatusMessage message) {
+        if (message != null) {
+            eventPublisher.publish(message);
         }
     }
 

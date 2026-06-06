@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -55,5 +56,23 @@ public class InferenceTaskController {
     @PostMapping("/{id}/run")
     public ApiResponse<InferenceTaskResponse> run(@PathVariable Long id) {
         return ApiResponse.ok(service.run(id));
+    }
+
+    @Operation(summary = "Cancel a queued or running inference task")
+    @PostMapping("/{id}/cancel")
+    public ApiResponse<InferenceTaskResponse> cancel(@PathVariable Long id) {
+        return ApiResponse.ok(service.cancel(id));
+    }
+
+    @Operation(summary = "Attach a tag to an inference task")
+    @PostMapping("/{id}/tags/{tagId}")
+    public ApiResponse<InferenceTaskResponse> attachTag(@PathVariable Long id, @PathVariable Long tagId) {
+        return ApiResponse.ok(service.attachTag(id, tagId));
+    }
+
+    @Operation(summary = "Detach a tag from an inference task")
+    @DeleteMapping("/{id}/tags/{tagId}")
+    public ApiResponse<InferenceTaskResponse> detachTag(@PathVariable Long id, @PathVariable Long tagId) {
+        return ApiResponse.ok(service.detachTag(id, tagId));
     }
 }

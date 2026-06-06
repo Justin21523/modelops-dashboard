@@ -26,4 +26,17 @@ public interface InferenceTaskRepository
     @Query("select avg(t.tokensPerSecond) from InferenceTask t where t.status = "
             + "com.justin.modelops.inference.enums.InferenceTaskStatus.SUCCEEDED")
     Double averageTokensPerSecondForSucceeded();
+
+    /**
+     * Ranks models by average throughput across their succeeded tasks.
+     * Each row: [modelId, modelName, avgTokensPerSecond, avgLatencyMs, taskCount].
+     */
+    @Query("""
+            select t.model.id, t.model.name, avg(t.tokensPerSecond), avg(t.latencyMs), count(t)
+            from InferenceTask t
+            where t.status = com.justin.modelops.inference.enums.InferenceTaskStatus.SUCCEEDED
+            group by t.model.id, t.model.name
+            order by avg(t.tokensPerSecond) desc nulls last
+            """)
+    List<Object[]> findFastestModels(Pageable pageable);
 }
