@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: modelops-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-modelops}
+      POSTGRES_USER: ${DB_USERNAME:-modelops}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-modelops}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-modelops}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: modelops-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: modelops-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-modelops}
+      DB_USERNAME: ${DB_USERNAME:-modelops}
+      DB_PASSWORD: ${DB_PASSWORD:-modelops}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      APP_SECURITY_JWT_SECRET: ${APP_SECURITY_JWT_SECRET:-ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1pbi1wcm9kdWN0aW9uLTEyMzQ1Njc4OTA=}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    profiles:
+      - full
+
+volumes:
+  postgres_data:
