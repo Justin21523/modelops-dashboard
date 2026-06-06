@@ -2,6 +2,7 @@ package com.justin.modelops.dashboard.service;
 
 import com.justin.modelops.config.RedisConfig;
 import com.justin.modelops.dashboard.dto.DashboardSummaryResponse;
+import com.justin.modelops.dashboard.dto.FastestModelEntry;
 import com.justin.modelops.dashboard.dto.ModelDistributionResponse;
 import com.justin.modelops.inference.dto.InferenceTaskResponse;
 import com.justin.modelops.inference.enums.InferenceTaskStatus;
@@ -11,6 +12,7 @@ import com.justin.modelops.model.enums.ModelStatus;
 import com.justin.modelops.model.repository.AiModelRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,6 +60,19 @@ public class DashboardService {
         return new ModelDistributionResponse(
                 toCountMap(modelRepository.countGroupedByModality()),
                 toCountMap(modelRepository.countGroupedByFormat()));
+    }
+
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = RedisConfig.DASHBOARD_CACHE, key = "'fastest-' + #limit")
+    public List<FastestModelEntry> fastestModels(int limit) {
+        return taskRepository.findFastestModels(PageRequest.of(0, limit)).stream()
+                .map(row -> new FastestModelEntry(
+                        (Long) row[0],
+                        (String) row[1],
+                        (Double) row[2],
+                        (Double) row[3],
+                        (Long) row[4]))
+                .toList();
     }
 
     private Map<String, Long> toCountMap(List<Object[]> rows) {
