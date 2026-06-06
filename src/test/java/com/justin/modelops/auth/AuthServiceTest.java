@@ -9,6 +9,7 @@ import com.justin.modelops.common.exception.BusinessException;
 import com.justin.modelops.common.exception.ErrorCode;
 import com.justin.modelops.security.JwtProperties;
 import com.justin.modelops.security.JwtTokenProvider;
+import com.justin.modelops.security.RefreshTokenService;
 import com.justin.modelops.user.dto.UserResponse;
 import com.justin.modelops.user.entity.Role;
 import com.justin.modelops.user.entity.User;
@@ -29,6 +30,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 
@@ -56,18 +58,25 @@ class AuthServiceTest {
     @Mock
     private AuthenticationManager authenticationManager;
     @Mock
+    private RefreshTokenService refreshTokenService;
+    @Mock
     private UserMapper userMapper;
     @Mock
     private AuditService auditService;
 
     private final JwtProperties jwtProperties =
-            new JwtProperties("secret", Duration.ofHours(1), "modelops-test");
+            new JwtProperties("secret", Duration.ofHours(1), Duration.ofDays(30), "modelops-test");
 
     private AuthService authService;
 
     private AuthService service() {
         return new AuthService(userRepository, roleRepository, passwordEncoder, tokenProvider,
-                jwtProperties, authenticationManager, userMapper, auditService);
+                jwtProperties, authenticationManager, refreshTokenService, userMapper, auditService);
+    }
+
+    private void stubRefreshIssue() {
+        when(refreshTokenService.issue(any(User.class)))
+                .thenReturn(new RefreshTokenService.IssuedToken("refresh-raw", Instant.now().plusSeconds(2592000)));
     }
 
     @Test
@@ -80,6 +89,7 @@ class AuthServiceTest {
         when(passwordEncoder.encode("supersecret")).thenReturn("hashed");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(tokenProvider.generateAccessToken(eq("alice"), anyList())).thenReturn("jwt-token");
+        stubRefreshIssue();
         when(userMapper.toResponse(any(User.class)))
                 .thenReturn(new UserResponse(1L, "alice", "alice@example.com", "Alice",
                         Set.of("USER"), true, null));
@@ -89,6 +99,7 @@ class AuthServiceTest {
         assertThat(response.accessToken()).isEqualTo("jwt-token");
         assertThat(response.tokenType()).isEqualTo("Bearer");
         assertThat(response.expiresInSeconds()).isEqualTo(3600);
+        assertThat(response.refreshToken()).isEqualTo("refresh-raw");
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
@@ -120,6 +131,7 @@ class AuthServiceTest {
         when(authenticationManager.authenticate(any())).thenReturn(authentication);
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
         when(tokenProvider.generateAccessToken(eq("alice"), anyList())).thenReturn("jwt-token");
+        stubRefreshIssue();
         when(userMapper.toResponse(user))
                 .thenReturn(new UserResponse(1L, "alice", "alice@example.com", "Alice",
                         Set.of("USER"), true, null));
@@ -127,6 +139,7 @@ class AuthServiceTest {
         AuthResponse response = authService.login(new LoginRequest("alice", "supersecret"));
 
         assertThat(response.accessToken()).isEqualTo("jwt-token");
+        assertThat(response.refreshToken()).isEqualTo("refresh-raw");
         verify(auditService).record(any(), eq("User"), any());
     }
 

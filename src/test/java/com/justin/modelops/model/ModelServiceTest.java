@@ -38,6 +38,8 @@ class ModelServiceTest {
     @Mock
     private ModelFormatRepository formatRepository;
     @Mock
+    private com.justin.modelops.tag.repository.TagRepository tagRepository;
+    @Mock
     private ModelMapper modelMapper;
     @Mock
     private AuditService auditService;
@@ -46,7 +48,7 @@ class ModelServiceTest {
 
     @BeforeEach
     void setUp() {
-        modelService = new ModelService(modelRepository, formatRepository, modelMapper, auditService);
+        modelService = new ModelService(modelRepository, formatRepository, tagRepository, modelMapper, auditService);
     }
 
     @Test
@@ -59,7 +61,7 @@ class ModelServiceTest {
                 .thenReturn(new ModelResponse(1L, "Llama 3 8B", null, "Meta",
                         ModelModality.TEXT, ModelFormatType.GGUF, QuantizationType.Q4_K_M,
                         "8B", 6144, null, null, "alias://models/llama3", null,
-                        ModelStatus.READY, null, null));
+                        ModelStatus.READY, java.util.Set.of(), null, null));
 
         CreateModelRequest request = new CreateModelRequest("Llama 3 8B", null, "Meta",
                 ModelModality.TEXT, ModelFormatType.GGUF, QuantizationType.Q4_K_M, "8B", 6144,
@@ -87,7 +89,7 @@ class ModelServiceTest {
         when(modelMapper.toResponse(any(AiModel.class))).thenReturn(
                 new ModelResponse(2L, "Embed", null, null, ModelModality.EMBEDDING,
                         ModelFormatType.ONNX, QuantizationType.NONE, null, null, null, null,
-                        null, null, ModelStatus.DRAFT, null, null));
+                        null, null, ModelStatus.DRAFT, java.util.Set.of(), null, null));
 
         CreateModelRequest request = new CreateModelRequest("Embed", null, null,
                 ModelModality.EMBEDDING, ModelFormatType.ONNX, null, null, null, null, null,

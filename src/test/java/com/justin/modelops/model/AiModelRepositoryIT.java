@@ -56,22 +56,22 @@ class AiModelRepositoryIT extends AbstractPostgresContainerTest {
         modelRepository.save(buildModel("BGE-M3", ModelModality.EMBEDDING, ModelFormatType.ONNX, ModelStatus.ARCHIVED));
 
         var byModality = modelRepository.findAll(
-                AiModelSpecifications.withFilter(new ModelFilter(ModelModality.TEXT, null, null, null)),
+                AiModelSpecifications.withFilter(new ModelFilter(ModelModality.TEXT, null, null, null, null)),
                 PageRequest.of(0, 10));
         assertThat(byModality.getContent()).extracting(AiModel::getName).containsExactly("Llama 3 8B");
 
         var byStatus = modelRepository.findAll(
-                AiModelSpecifications.withFilter(new ModelFilter(null, null, ModelStatus.READY, null)),
+                AiModelSpecifications.withFilter(new ModelFilter(null, null, ModelStatus.READY, null, null)),
                 PageRequest.of(0, 10));
         assertThat(byStatus.getTotalElements()).isEqualTo(2);
 
         var byKeyword = modelRepository.findAll(
-                AiModelSpecifications.withFilter(new ModelFilter(null, null, null, "qwen")),
+                AiModelSpecifications.withFilter(new ModelFilter(null, null, null, "qwen", null)),
                 PageRequest.of(0, 10));
         assertThat(byKeyword.getContent()).extracting(AiModel::getName).containsExactly("Qwen2-VL 7B");
 
         var byFormat = modelRepository.findAll(
-                AiModelSpecifications.withFilter(new ModelFilter(null, ModelFormatType.ONNX, null, null)),
+                AiModelSpecifications.withFilter(new ModelFilter(null, ModelFormatType.ONNX, null, null, null)),
                 PageRequest.of(0, 10));
         assertThat(byFormat.getContent()).extracting(AiModel::getName).containsExactly("BGE-M3");
     }

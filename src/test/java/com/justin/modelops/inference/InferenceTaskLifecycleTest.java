@@ -54,13 +54,18 @@ class InferenceTaskLifecycleTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
     @Mock
+    private com.justin.modelops.tag.repository.TagRepository tagRepository;
+    @Mock
     private RuntimeAdapterRegistry adapterRegistry;
     @Mock
     private TaskEventPublisher taskEventPublisher;
 
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
+            new com.fasterxml.jackson.databind.ObjectMapper();
+
     private InferenceTaskService service() {
         return new InferenceTaskService(taskRepository, modelRepository, runtimeBackendRepository,
-                mapper, auditService, eventPublisher);
+                tagRepository, mapper, auditService, eventPublisher, objectMapper);
     }
 
     private InferenceTask queuedTask(long id) {
@@ -93,6 +98,7 @@ class InferenceTaskLifecycleTest {
     void markSucceeded_persistsMetrics() {
         InferenceTaskService service = service();
         InferenceTask task = queuedTask(1L);
+        task.setStatus(InferenceTaskStatus.RUNNING);
         when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
 
         TaskStatusMessage message = service.markSucceeded(1L, new InferenceResult("done", 420L, 64.5));
@@ -109,6 +115,7 @@ class InferenceTaskLifecycleTest {
     void markFailed_recordsErrorMessage() {
         InferenceTaskService service = service();
         InferenceTask task = queuedTask(1L);
+        task.setStatus(InferenceTaskStatus.RUNNING);
         when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
 
         TaskStatusMessage message = service.markFailed(1L, "boom");
@@ -131,6 +138,54 @@ class InferenceTaskLifecycleTest {
                 .isEqualTo(ErrorCode.INVALID_STATE_TRANSITION);
 
         verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void cancel_movesQueuedTaskToCanceledAndBroadcasts() {
+        InferenceTaskService service = service();
+        InferenceTask task = queuedTask(1L);
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+        service.cancel(1L);
+
+        assertThat(task.getStatus()).isEqualTo(InferenceTaskStatus.CANCELED);
+        assertThat(task.getFinishedAt()).isNotNull();
+        verify(eventPublisher).publishEvent(any(InferenceTaskService.TaskStatusBroadcast.class));
+    }
+
+    @Test
+    void cancel_rejectsTerminalTask() {
+        InferenceTaskService service = service();
+        InferenceTask task = queuedTask(1L);
+        task.setStatus(InferenceTaskStatus.SUCCEEDED);
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+        assertThatThrownBy(() -> service.cancel(1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.INVALID_STATE_TRANSITION);
+    }
+
+    @Test
+    void markRunning_skipsWhenTaskNoLongerQueued() {
+        InferenceTaskService service = service();
+        InferenceTask task = queuedTask(1L);
+        task.setStatus(InferenceTaskStatus.CANCELED);
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+        assertThat(service.markRunning(1L)).isNull();
+        assertThat(task.getStatus()).isEqualTo(InferenceTaskStatus.CANCELED);
+    }
+
+    @Test
+    void markSucceeded_skipsWhenTaskNotRunning() {
+        InferenceTaskService service = service();
+        InferenceTask task = queuedTask(1L);
+        task.setStatus(InferenceTaskStatus.CANCELED);
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+        assertThat(service.markSucceeded(1L, new InferenceResult("x", 1L, 1.0))).isNull();
+        assertThat(task.getStatus()).isEqualTo(InferenceTaskStatus.CANCELED);
     }
 
     @Test
