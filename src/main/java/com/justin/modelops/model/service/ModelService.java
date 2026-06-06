@@ -12,11 +12,15 @@ import com.justin.modelops.model.entity.ModelFormat;
 import com.justin.modelops.model.enums.ModelFormatType;
 import com.justin.modelops.model.enums.ModelStatus;
 import com.justin.modelops.model.enums.QuantizationType;
+import com.justin.modelops.config.RedisConfig;
 import com.justin.modelops.model.mapper.ModelMapper;
 import com.justin.modelops.model.repository.AiModelRepository;
 import com.justin.modelops.model.repository.AiModelSpecifications;
 import com.justin.modelops.model.repository.ModelFormatRepository;
+import com.justin.modelops.tag.entity.Tag;
+import com.justin.modelops.tag.repository.TagRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -28,9 +32,11 @@ public class ModelService {
 
     private final AiModelRepository modelRepository;
     private final ModelFormatRepository formatRepository;
+    private final TagRepository tagRepository;
     private final ModelMapper modelMapper;
     private final AuditService auditService;
 
+    @CacheEvict(cacheNames = RedisConfig.DASHBOARD_CACHE, allEntries = true)
     @Transactional
     public ModelResponse create(CreateModelRequest request) {
         AiModel model = new AiModel();
@@ -64,6 +70,7 @@ public class ModelService {
         return modelMapper.toResponse(getEntity(id));
     }
 
+    @CacheEvict(cacheNames = RedisConfig.DASHBOARD_CACHE, allEntries = true)
     @Transactional
     public ModelResponse update(Long id, UpdateModelRequest request) {
         AiModel model = getEntity(id);
@@ -75,11 +82,33 @@ public class ModelService {
         return modelMapper.toResponse(model);
     }
 
+    @CacheEvict(cacheNames = RedisConfig.DASHBOARD_CACHE, allEntries = true)
     @Transactional
     public void delete(Long id) {
         AiModel model = getEntity(id);
         modelRepository.delete(model);
         auditService.record(AuditAction.DELETE, "AiModel", id);
+    }
+
+    @Transactional
+    public ModelResponse attachTag(Long id, Long tagId) {
+        AiModel model = getEntity(id);
+        model.addTag(resolveTag(tagId));
+        auditService.record(AuditAction.UPDATE, "AiModel", id, "attach tag " + tagId);
+        return modelMapper.toResponse(model);
+    }
+
+    @Transactional
+    public ModelResponse detachTag(Long id, Long tagId) {
+        AiModel model = getEntity(id);
+        model.removeTag(resolveTag(tagId));
+        auditService.record(AuditAction.UPDATE, "AiModel", id, "detach tag " + tagId);
+        return modelMapper.toResponse(model);
+    }
+
+    private Tag resolveTag(Long tagId) {
+        return tagRepository.findById(tagId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tag", tagId));
     }
 
     private AiModel getEntity(Long id) {

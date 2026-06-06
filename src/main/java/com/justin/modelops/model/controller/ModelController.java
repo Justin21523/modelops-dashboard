@@ -50,8 +50,9 @@ public class ModelController {
             @RequestParam(required = false) ModelFormatType formatType,
             @RequestParam(required = false) ModelStatus status,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long tagId,
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
-        ModelFilter filter = new ModelFilter(modality, formatType, status, keyword);
+        ModelFilter filter = new ModelFilter(modality, formatType, status, keyword, tagId);
         return ApiResponse.ok(PageResponse.from(modelService.list(filter, pageable)));
     }
 
@@ -74,5 +75,17 @@ public class ModelController {
     public ApiResponse<Void> delete(@PathVariable Long id) {
         modelService.delete(id);
         return ApiResponse.ok();
+    }
+
+    @Operation(summary = "Attach a tag to a model")
+    @PostMapping("/{id}/tags/{tagId}")
+    public ApiResponse<ModelResponse> attachTag(@PathVariable Long id, @PathVariable Long tagId) {
+        return ApiResponse.ok(modelService.attachTag(id, tagId));
+    }
+
+    @Operation(summary = "Detach a tag from a model")
+    @DeleteMapping("/{id}/tags/{tagId}")
+    public ApiResponse<ModelResponse> detachTag(@PathVariable Long id, @PathVariable Long tagId) {
+        return ApiResponse.ok(modelService.detachTag(id, tagId));
     }
 }

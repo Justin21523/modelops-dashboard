@@ -13,5 +13,6 @@ public record ModelFilter(
         ModelModality modality,
         ModelFormatType formatType,
         ModelStatus status,
-        String keyword) {
+        String keyword,
+        Long tagId) {
 }

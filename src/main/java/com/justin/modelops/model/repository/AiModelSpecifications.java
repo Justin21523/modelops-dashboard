@@ -2,6 +2,7 @@ package com.justin.modelops.model.repository;
 
 import com.justin.modelops.model.dto.ModelFilter;
 import com.justin.modelops.model.entity.AiModel;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
@@ -35,6 +36,10 @@ public final class AiModelSpecifications {
                         cb.like(cb.lower(root.get("name")), like),
                         cb.like(cb.lower(root.get("family")), like),
                         cb.like(cb.lower(root.get("provider")), like)));
+            }
+            if (filter.tagId() != null) {
+                query.distinct(true);
+                predicates.add(cb.equal(root.join("tags", JoinType.INNER).get("id"), filter.tagId()));
             }
             return cb.and(predicates.toArray(Predicate[]::new));
         };

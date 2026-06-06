@@ -4,8 +4,10 @@ import com.justin.modelops.model.enums.ModelFormatType;
 import com.justin.modelops.model.enums.ModelModality;
 import com.justin.modelops.model.enums.ModelStatus;
 import com.justin.modelops.model.enums.QuantizationType;
+import com.justin.modelops.tag.dto.TagSummary;
 
 import java.time.Instant;
+import java.util.Set;
 
 public record ModelResponse(
         Long id,
@@ -22,6 +24,7 @@ public record ModelResponse(
         String storageNote,
         String notes,
         ModelStatus status,
+        Set<TagSummary> tags,
         Instant createdAt,
         Instant updatedAt) {
 }
