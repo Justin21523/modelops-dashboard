@@ -8,6 +8,10 @@ public enum AuditAction {
     UPDATE,
     DELETE,
     RUN,
+    CANCEL,
     LOGIN,
-    REGISTER
+    LOGOUT,
+    REGISTER,
+    REFRESH,
+    PASSWORD_CHANGE
 }

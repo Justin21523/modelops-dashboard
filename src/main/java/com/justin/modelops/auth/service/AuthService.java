@@ -2,6 +2,7 @@ package com.justin.modelops.auth.service;
 
 import com.justin.modelops.auth.dto.AuthResponse;
 import com.justin.modelops.auth.dto.LoginRequest;
+import com.justin.modelops.auth.dto.RefreshTokenRequest;
 import com.justin.modelops.auth.dto.RegisterRequest;
 import com.justin.modelops.common.audit.AuditAction;
 import com.justin.modelops.common.audit.AuditService;
@@ -9,6 +10,7 @@ import com.justin.modelops.common.exception.BusinessException;
 import com.justin.modelops.common.exception.ErrorCode;
 import com.justin.modelops.security.JwtProperties;
 import com.justin.modelops.security.JwtTokenProvider;
+import com.justin.modelops.security.RefreshTokenService;
 import com.justin.modelops.user.entity.Role;
 import com.justin.modelops.user.entity.User;
 import com.justin.modelops.user.enums.UserRole;
@@ -27,8 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * Handles registration and login: password hashing, default role assignment, and
- * JWT issuance. Refresh tokens are deferred to Phase 2.
+ * Handles registration, login, and refresh-token lifecycle: password hashing, default
+ * role assignment, JWT issuance, and DB-backed refresh tokens with rotation/revocation.
  */
 @Service
 @RequiredArgsConstructor
@@ -40,6 +42,7 @@ public class AuthService {
     private final JwtTokenProvider tokenProvider;
     private final JwtProperties jwtProperties;
     private final AuthenticationManager authenticationManager;
+    private final RefreshTokenService refreshTokenService;
     private final UserMapper userMapper;
     private final AuditService auditService;
 
@@ -64,7 +67,7 @@ public class AuthService {
         User saved = userRepository.save(user);
 
         auditService.record(AuditAction.REGISTER, "User", saved.getId());
-        return issueToken(saved);
+        return issueTokens(saved);
     }
 
     @Transactional
@@ -75,16 +78,35 @@ public class AuthService {
             User user = userRepository.findByUsername(authentication.getName())
                     .orElseThrow(() -> new BusinessException(ErrorCode.AUTHENTICATION_FAILED, "Invalid credentials"));
             auditService.record(AuditAction.LOGIN, "User", user.getId());
-            return issueToken(user);
+            return issueTokens(user);
         } catch (BadCredentialsException ex) {
             throw new BusinessException(ErrorCode.AUTHENTICATION_FAILED, "Invalid username or password");
         }
     }
 
-    private AuthResponse issueToken(User user) {
+    @Transactional
+    public AuthResponse refresh(RefreshTokenRequest request) {
+        RefreshTokenService.RotationResult rotation = refreshTokenService.rotate(request.refreshToken());
+        User user = rotation.user();
+        auditService.record(AuditAction.REFRESH, "User", user.getId());
+        return buildResponse(user, rotation.token());
+    }
+
+    @Transactional
+    public void logout(RefreshTokenRequest request) {
+        refreshTokenService.revoke(request.refreshToken());
+        auditService.record(AuditAction.LOGOUT, "User", null);
+    }
+
+    private AuthResponse issueTokens(User user) {
+        return buildResponse(user, refreshTokenService.issue(user));
+    }
+
+    private AuthResponse buildResponse(User user, RefreshTokenService.IssuedToken refreshToken) {
         List<String> authorities = user.getRoles().stream().map(role -> role.getName().authority()).toList();
-        String token = tokenProvider.generateAccessToken(user.getUsername(), authorities);
-        return AuthResponse.bearer(token, jwtProperties.accessTokenExpiration().toSeconds(),
-                userMapper.toResponse(user));
+        String accessToken = tokenProvider.generateAccessToken(user.getUsername(), authorities);
+        long refreshSeconds = jwtProperties.refreshTokenExpiration().toSeconds();
+        return AuthResponse.bearer(accessToken, jwtProperties.accessTokenExpiration().toSeconds(),
+                refreshToken.rawToken(), refreshSeconds, userMapper.toResponse(user));
     }
 }

@@ -15,8 +15,7 @@ import java.util.List;
 
 /**
  * Issues and validates HS256 access tokens. Roles are stored in a {@code roles} claim.
- *
- * <p>TODO(phase-2): introduce refresh tokens and token revocation.
+ * Refresh tokens are handled separately by {@link RefreshTokenService}.
  */
 @Slf4j
 @Component

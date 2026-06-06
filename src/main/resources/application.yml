@@ -50,4 +50,5 @@ app:
       # Base64-encoded HS256 secret. Override via APP_SECURITY_JWT_SECRET in real deployments.
       secret: ${APP_SECURITY_JWT_SECRET:ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1pbi1wcm9kdWN0aW9uLTEyMzQ1Njc4OTA=}
       access-token-expiration: ${APP_SECURITY_JWT_EXPIRATION:PT1H}
+      refresh-token-expiration: ${APP_SECURITY_JWT_REFRESH_EXPIRATION:P30D}
       issuer: modelops-dashboard

@@ -2,6 +2,7 @@ package com.justin.modelops.auth.controller;
 
 import com.justin.modelops.auth.dto.AuthResponse;
 import com.justin.modelops.auth.dto.LoginRequest;
+import com.justin.modelops.auth.dto.RefreshTokenRequest;
 import com.justin.modelops.auth.dto.RegisterRequest;
 import com.justin.modelops.auth.service.AuthService;
 import com.justin.modelops.common.response.ApiResponse;
@@ -31,9 +32,23 @@ public class AuthController {
         return ApiResponse.ok(authService.register(request));
     }
 
-    @Operation(summary = "Authenticate and receive an access token")
+    @Operation(summary = "Authenticate and receive access and refresh tokens")
     @PostMapping("/login")
     public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok(authService.login(request));
     }
+
+    @Operation(summary = "Exchange a refresh token for a new access/refresh token pair")
+    @PostMapping("/refresh")
+    public ApiResponse<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ApiResponse.ok(authService.refresh(request));
+    }
+
+    @Operation(summary = "Revoke a refresh token (logout)")
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request);
+        return ApiResponse.ok();
+    }
 }
+

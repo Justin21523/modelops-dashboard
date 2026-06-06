@@ -11,11 +11,12 @@ spring:
     redis:
       repositories:
         enabled: false
+  # Redis is excluded under test; Spring Boot's cache auto-configuration then provides a
+  # simple in-memory CacheManager so @EnableCaching works without a Redis instance.
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
-      - org.springframework.boot.autoconfigure.cache.CacheAutoConfiguration
 
 app:
   seed:
@@ -24,4 +25,5 @@ app:
     jwt:
       secret: ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1pbi1wcm9kdWN0aW9uLTEyMzQ1Njc4OTA=
       access-token-expiration: PT1H
+      refresh-token-expiration: P30D
       issuer: modelops-dashboard-test
