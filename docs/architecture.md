@@ -65,7 +65,12 @@ these; the actor is resolved from the security context. Important actions
    requires authentication. Method-level security is enabled for future fine-grained
    rules.
 
-Refresh tokens and revocation are deferred to Phase 2 (marked with `TODO`).
+**Refresh tokens** are opaque, DB-backed, and stored only as SHA-256 hashes
+(`RefreshTokenService`). Login/registration issue an access token plus a refresh token;
+`/auth/refresh` validates the token, **revokes it, and issues a new pair (rotation)** so a
+replayed token is rejected; `/auth/logout` revokes a single token and a password change
+revokes all of a user's tokens. ADMIN-only operations (benchmark and tag mutations) are
+enforced with method-level `@PreAuthorize("hasRole('ADMIN')")`.
 
 ## Inference execution
 
@@ -91,11 +96,30 @@ Each state transition is its own transaction (`markRunning` / `markSucceeded` /
 `markFailed`) so progress is persisted and observable, and each broadcasts a
 `TaskStatusMessage` over STOMP (`/topic/tasks` and `/topic/tasks/{id}`).
 
+**Cancellation is cooperative and race-safe.** `cancel()` moves a non-terminal task to
+`CANCELED`; the transition methods are guarded by the current status (`markRunning` only
+acts on `QUEUED`, `markSucceeded`/`markFailed` only on `RUNNING`) and return `null` when
+the guard fails, so the executor skips the corresponding step and a task canceled mid-run
+is not overwritten. Generation parameters are accepted as a structured
+`InferenceParameters` object, validated, and persisted as JSON in the task's
+`parameters` column (no schema change).
+
 ## Caching
 
-`DashboardService.summary()` and `modelDistribution()` are `@Cacheable` in Redis with a
-short TTL (30s, see `RedisConfig`), absorbing repeated landing-page loads without
-explicit eviction wiring in Phase 1.
+`DashboardService` methods (`summary`, `modelDistribution`, `fastestModels`) are
+`@Cacheable` in Redis with a short TTL (30s, see `RedisConfig`). Model, evaluation, and
+inference-task mutations carry `@CacheEvict(allEntries = true)` on the `dashboard` cache so
+aggregates stay fresh between TTL windows. The serializer embeds type information so the
+immutable record DTOs round-trip correctly.
+
+## Tagging
+
+`Tag` is associated to `AiModel`, `BenchmarkDefinition`, and `InferenceTask` via
+`@ManyToMany` join tables (`model_tags`, `benchmark_tags`, `task_tags`). The collections
+are `LAZY` with `@BatchSize(50)` so list endpoints that project tags issue a few batched
+`IN` queries instead of N+1, avoiding the in-memory pagination pitfall of collection
+fetch-joins. Tag-based filtering joins the association inside the JPA `Specification` with
+`query.distinct(true)`.
 
 ## Persistence model
 

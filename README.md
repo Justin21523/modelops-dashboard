@@ -15,22 +15,26 @@ Java 21 · Spring Boot 3.4 · Maven · Spring Web / Security / Data JPA / Valida
 WebSocket / Actuator · PostgreSQL + Flyway · Redis · JWT (JJWT) · MapStruct · Lombok ·
 springdoc OpenAPI · JUnit 5 · Mockito · Testcontainers · Docker Compose.
 
-## Features (Phase 1)
+## Features
 
-- **Auth & Users** — register, login, JWT access tokens, BCrypt hashing, role-based
-  authorization, `/users/me`.
-- **Model Registry** — CRUD with filtering by modality, format, status, and keyword.
+- **Auth & Users** — register, login, JWT access tokens, **DB-backed refresh tokens with
+  rotation/revocation** (`/auth/refresh`, `/auth/logout`), BCrypt hashing, role-based
+  authorization, `/users/me`, profile update, and password change.
+- **Model Registry** — CRUD with filtering by modality, format, status, keyword, and tag.
 - **Hardware Profiles** — CRUD for GPU/VRAM/RAM/backend configurations.
 - **Runtime Backends** — CRUD for inference backends and their capabilities/status.
-- **Inference Tasks** — create, list (filter by status), run asynchronously through a
-  mock adapter, lifecycle `QUEUED → RUNNING → SUCCEEDED/FAILED`.
-- **Dashboard** — summary counters, recent tasks, model distribution by modality/format.
+- **Inference Tasks** — create (with structured generation parameters), list (filter by
+  status), run asynchronously through a mock adapter, **cancel** (cooperative), lifecycle
+  `QUEUED → RUNNING → SUCCEEDED/FAILED/CANCELED`.
+- **Benchmarks** — CRUD for reusable benchmark definitions (ADMIN-only mutations).
+- **Evaluations** — CRUD linking model + hardware + runtime + benchmark, with filtering
+  and per-model metric aggregation.
+- **Tags** — CRUD (ADMIN-only mutations) and many-to-many associations to models,
+  benchmarks, and inference tasks (attach/detach + tag filtering).
+- **Dashboard** — summary counters, recent tasks, model distribution, fastest models.
 - **WebSocket** — live task status broadcast over STOMP (`/topic/tasks`).
 - **Cross-cutting** — uniform API response envelope, global exception handling, JPA
-  auditing, audit log, Redis caching, OpenAPI docs.
-
-`evaluation`, `benchmark`, and `tag` modules have their schema and entities in place;
-their full CRUD APIs arrive in Phase 2 (see `docs/development-roadmap.md`).
+  auditing, audit log, Redis caching with eviction on mutation, OpenAPI docs.
 
 ## Quick start
 

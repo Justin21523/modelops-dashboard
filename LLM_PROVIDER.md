@@ -4,11 +4,12 @@ This file provides guidance to LLMProvider Tooling (llm_provider.ai/code) when w
 
 ## Project status
 
-This repository is in **bootstrap** state: the directory is currently empty and the
-codebase is being built from the specification captured below. Treat this document as
-the authoritative blueprint until real source files exist, then keep it in sync with
-what is actually implemented. Commands below assume the standard Maven + Spring Boot
-layout that Phase 1 will create; verify they exist before relying on them.
+Phase 1 and Phase 2 are implemented and tested (`mvn verify` green: unit + Testcontainers
+IT). Phase 1 = secure foundation + model/hardware/runtime/mock-inference/dashboard slice;
+Phase 2 = benchmark/evaluation/tag CRUD, tag associations, DB-backed refresh tokens,
+inference cancellation + structured parameters, dashboard fastest-models + cache eviction.
+See `docs/development-roadmap.md` for what remains (real runtime adapters, observability,
+CI, frontend). Keep this file in sync as the code evolves.
 
 ## Language rules (non-negotiable)
 
@@ -108,8 +109,10 @@ Spring Security + JWT access tokens, BCrypt password hashing, role-based authori
 - **Protected** (require valid JWT): everything else — model, hardware, runtime,
   inference, evaluation, benchmark, dashboard endpoints.
 
-Login returns a JWT; a JWT filter authenticates subsequent requests. Refresh tokens are
-a later phase.
+Login returns a JWT access token plus an opaque, DB-backed refresh token (SHA-256 hashed,
+rotated on `/auth/refresh`, revocable via `/auth/logout`). A JWT filter authenticates
+subsequent requests from the access token's claims. ADMIN-only mutations (benchmarks,
+tags) use method-level `@PreAuthorize`.
 
 ## Phasing discipline
 

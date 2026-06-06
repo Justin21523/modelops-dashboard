@@ -19,16 +19,24 @@ Delivered:
 Schema and entities are also in place for `evaluation`, `benchmark`, and `tag` so Phase 2
 can build their APIs without a migration redesign.
 
-## Phase 2 — Evaluation, benchmarks, tags & token refresh
+## Phase 2 — Evaluation, benchmarks, tags & token refresh (delivered)
 
-- Evaluation record CRUD: link model + hardware + runtime + benchmark; metrics (latency,
-  tokens/sec, memory, score, notes); filtering and aggregation.
-- Benchmark definition CRUD (coding, Chinese writing, VLM image understanding,
-  summarization, custom).
-- Tag CRUD and many-to-many associations to models, benchmarks, and tasks.
-- Refresh tokens and token revocation; account management.
-- Inference task cancellation endpoint and richer parameter handling.
-- Cache eviction wiring on mutations; dashboard "fastest models".
+- Benchmark definition CRUD with ADMIN-restricted mutations (`@PreAuthorize`).
+- Evaluation record CRUD: links model + hardware + runtime + benchmark; metrics
+  (latency, tokens/sec, memory, score, notes); specification filtering and per-model
+  aggregation.
+- Tag CRUD (ADMIN-restricted mutations) and many-to-many associations to models,
+  benchmarks, and tasks (`@BatchSize` to avoid N+1), with attach/detach endpoints and
+  tag-based filtering.
+- DB-backed refresh tokens (SHA-256 hashed) with rotation and revocation; `/auth/refresh`,
+  `/auth/logout`; account management (`PATCH /users/me`, password change that revokes
+  refresh tokens).
+- Inference task cancellation (cooperative, status-guarded) and structured generation
+  parameters (validated, stored as JSON).
+- Dashboard "fastest models" endpoint and Redis cache eviction on model / evaluation /
+  task mutations.
+- Added unit tests (benchmark, evaluation, refresh token, cancellation), a Testcontainers
+  tag-association and refresh-token IT, and an RBAC web-layer IT.
 
 ## Phase 3 — Real runtime adapters
 
