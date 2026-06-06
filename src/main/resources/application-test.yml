@@ -1,0 +1,27 @@
+# Datasource is supplied at runtime by the Testcontainers PostgreSQL instance
+# via @DynamicPropertySource (see AbstractPostgresContainerTest).
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  data:
+    redis:
+      repositories:
+        enabled: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.cache.CacheAutoConfiguration
+
+app:
+  seed:
+    enabled: false
+  security:
+    jwt:
+      secret: ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1pbi1wcm9kdWN0aW9uLTEyMzQ1Njc4OTA=
+      access-token-expiration: PT1H
+      issuer: modelops-dashboard-test

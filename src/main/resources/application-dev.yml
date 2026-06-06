@@ -1,0 +1,18 @@
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    placeholders:
+      seedDevData: "true"
+
+logging:
+  level:
+    com.justin.modelops: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.security: INFO
+
+app:
+  seed:
+    enabled: true
